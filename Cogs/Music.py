@@ -3,6 +3,7 @@ from asyncio.exceptions import TimeoutError
 from discord.ext import commands
 from discord_components import DiscordComponents, Button, Select, SelectOption, ButtonStyle, InteractionType
 from youtubesearchpython import VideosSearch
+import youtube_dl
 
 class Music(commands.Cog):
     def __init__(self, app):
@@ -13,6 +14,7 @@ class Music(commands.Cog):
         self.play_list = ""
         self.is_playing = False
         self.play_list_queue = []
+        self.YDL_OPTS = {'format': 'bestaudio'}
         self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
         self.vc = ""
 
@@ -87,11 +89,13 @@ class Music(commands.Cog):
         await msg.delete()
         await message.delete()
 
-        # if user select music, return music info. else return None
-        try:
-            return search_result[select_num]
-        except UnboundLocalError:
-            return None
+        with youtube_dl.YoutubeDL(self.YDL_OPTS) as ydl:
+            try:
+                info = ydl.extract_info(search_result[select_num]['link'], download=False)
+            except:
+                return None
+
+        return {'link': info['formats'][0]['url'], 'title': info['title']}
 
     def play_next(self):
         if len(self.play_list_queue) > 0:
