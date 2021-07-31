@@ -11,7 +11,8 @@ class Music(commands.Cog):
 
         self.app:commands.Bot = app
 
-        self.play_list = ""
+        self.play_list_message = ""
+        self.play_list_titles = []
         self.is_playing = False
         self.play_list_queue = []
         self.YDL_OPTS = {'format': 'bestaudio'}
@@ -27,8 +28,6 @@ class Music(commands.Cog):
         channel = self.app.get_channel(self.MUSIC_CHANNEL)
 
         # 재생목록 및 플레이어 만들기
-        await channel.send("___***재생목록:***___")
-        self.play_list = await channel.send("현재 재생목록 비어있음")
         player_embed = discord.Embed(title="현재 재생 중 아님", color=0xb18cfe)
         player_embed.set_image(url='https://s3.us-west-2.amazonaws.com/secure.notion-static.com/5b19c3df-c369-42fb-89b7-150cf832c800/996283.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20210730%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20210730T080909Z&X-Amz-Expires=86400&X-Amz-Signature=4dc106116bff4e5d7c1510def520dde106cb15bbfd69974f3cff0c6ae1cd3b6f&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22996283.jpg%22')
         player_embed.set_footer(text="채팅을 치면 자동으로 검색됩니다.")
@@ -40,6 +39,8 @@ class Music(commands.Cog):
                 Button(label="Stop")
              ]
         ])
+        await channel.send("___***재생목록:***___")
+        self.play_list_message = await channel.send("현재 재생목록 비어있음")
 
     # when message entered, search message in youtube
     async def search_music(self, message):
@@ -111,6 +112,8 @@ class Music(commands.Cog):
             m_link = self.play_list_queue[0][0]['link']
 
             self.play_list_queue.pop(0)
+            self.play_list_titles.pop(0)
+            self.refresh_play_list()
 
             self.vc.play(discord.FFmpegPCMAudio(m_link, **self.FFMPEG_OPTIONS), after=lambda e: self.play_next())
         else:
@@ -130,6 +133,8 @@ class Music(commands.Cog):
             print(self.play_list_queue)
 
             self.play_list_queue.pop(0)
+            self.play_list_titles.pop(0)
+            self.refresh_play_list()
 
             self.vc.play(discord.FFmpegPCMAudio(m_link, **self.FFMPEG_OPTIONS), after=lambda e: self.play_next())
         else:
@@ -139,6 +144,10 @@ class Music(commands.Cog):
         if self.vc != "" and self.vc:
             self.vc.stop()
             await self.play_next()
+
+    def refresh_play_list(self):
+        play_list = '\n'.join(self.play_list_titles)
+        self.play_list_message.edit(play_list)
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -158,6 +167,8 @@ class Music(commands.Cog):
             voice_channel = message.author.voice.channel
             song = await self.search_music(message)
             print(song)
+            self.play_list_titles.append(song['title'])
+            self.refresh_play_list()
             if song:
                 self.play_list_queue.append([song, voice_channel])
                 if not self.is_playing:
