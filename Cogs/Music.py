@@ -32,7 +32,14 @@ class Music(commands.Cog):
         player_embed = discord.Embed(title="현재 재생 중 아님", color=0xb18cfe)
         player_embed.set_image(url='https://s3.us-west-2.amazonaws.com/secure.notion-static.com/5b19c3df-c369-42fb-89b7-150cf832c800/996283.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAT73L2G45O3KS52Y5%2F20210730%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20210730T080909Z&X-Amz-Expires=86400&X-Amz-Signature=4dc106116bff4e5d7c1510def520dde106cb15bbfd69974f3cff0c6ae1cd3b6f&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22996283.jpg%22')
         player_embed.set_footer(text="채팅을 치면 자동으로 검색됩니다.")
-        await channel.send(embed=player_embed)
+        await channel.send(embed=player_embed, components = [
+            [
+                Button(label="Pause"),
+                Button(label="Skip"),
+                Button(label="Shuffle"),
+                Button(label="Stop")
+             ]
+        ])
 
     # when message entered, search message in youtube
     async def search_music(self, message):
