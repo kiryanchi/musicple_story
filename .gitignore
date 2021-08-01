@@ -1,3 +1,5 @@
 venv/
 token
 .idea/
+my_venv/
+MusicTest.py

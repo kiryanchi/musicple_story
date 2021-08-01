@@ -22,6 +22,7 @@ async def on_ready():
     print(bot.user.name)
     print(bot.user.id)
     print('--------------------------')
+    change_game.start()
 
 @bot.command(name="로드")
 async def load_commands(ctx, extension):
