@@ -16,8 +16,7 @@ class Music(commands.Cog):
         self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
         self.NUM_OF_SEARCH = 9
         self.NUM_OF_SONG_QUEUE = 15
-        self.QUEUE_MSG_ID = 872112825236090910
-        self.PLAYER_EMBED_MSG_ID = 872112822153248778
+        self.PLAYER_EMBED_MSG_ID = 872753999315603466
         # self.BUTTON_COMPONENTS = [
         #     [
         #         Button(style=ButtonStyle.green, label="Skip"),
@@ -31,24 +30,20 @@ class Music(commands.Cog):
         self.song_queue = []
         self.is_playing = False
         self.vc = ""
-        self.queue_msg = ""
         self.player_embed_msg = ""
     
     @commands.Cog.listener()
     async def on_ready(self):
         DiscordComponents(self.app)
         channel = self.app.get_channel(self.MUSIC_CHANNEL)
-        self.queue_msg = await channel.fetch_message(self.QUEUE_MSG_ID)
         self.player_embed_msg = await channel.fetch_message(self.PLAYER_EMBED_MSG_ID)
 
         embed = self.make_song_embed()
-        await self.player_embed_msg.edit(embed=embed)
-        await self.queue_msg.edit("현재 재생목록 비어있음")
+        await self.player_embed_msg.edit("현재 재생목록 비어있음", embed=embed)
 
-
-    def make_song_embed(self, thumbnail=None):
+    def make_song_embed(self, title=None, thumbnail=None):
         if thumbnail is not None:
-            embed = discord.Embed(title="현재 재생 중인 곡", color=0xb18cfe)
+            embed = discord.Embed(title="현재 재생 중인 곡", description=title, color=0xb18cfe)
             embed.set_image(url=thumbnail)
             embed.set_footer(text="채팅을 치면 자동으로 검색합니다.")
         else:
@@ -59,8 +54,6 @@ class Music(commands.Cog):
 
     async def search_song(self, amount, song, get_url=False):
         info = await self.app.loop.run_in_executor(None, lambda: VideosSearch(song, limit=self.NUM_OF_SEARCH))
-        # info = await self.app.loop.run_in_executor(None, lambda: youtube_dl.YoutubeDL(self.YDL_OPTS).extract_info(f"ytsearch{amount}:{song}", download=False, ie_key="YoutubeSearch"))
-        # if len(info["entries"]) == 0: return None
 
         return info.result()
 
@@ -131,7 +124,7 @@ class Music(commands.Cog):
         else:
             await self.vc.move_to(song_info[1])
         
-        embed = self.make_song_embed(song_info[0]['thumbnails'][0]['url'])
+        embed = self.make_song_embed(song_info[0]['title'], song_info[0]['thumbnails'][0]['url'])
 
         await self.player_embed_msg.edit(embed=embed)
 
@@ -140,14 +133,21 @@ class Music(commands.Cog):
 
     async def refresh_song_queue(self):
         if len(self.song_queue) == 0:
-            await self.queue_msg.edit("현재 재생목록 비어있음")
+            await self.player_embed_msg.edit("현재 재생목록 비어있음")
         elif len(self.song_queue) > 0:
             text = ""
-            for info in self.song_queue:
-                title = info[0]['title']
-                text += f"{title}\n"
-            await self.queue_msg.edit(text)
+            for idx in range(len(self.song_queue)):
+                title = self.song_queue[idx][0]['title']
+                text += f"[{idx+1}] {title}\n"
+            # for info in self.song_queue:
+            #     title = info[0]['title']
+            #     text += f"{title}\n"
+            await self.player_embed_msg.edit(text)
 
+    @commands.command()
+    async def init(self, ctx):
+        await ctx.send("___***재생목록:***___")
+        await ctx.send('재생목록이 될 메시지')
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -167,18 +167,19 @@ class Music(commands.Cog):
             
         info = await self.search_song(self.NUM_OF_SEARCH, message.content)
         song = await self.select_song(message.content, info, message)
-        # print(song)
 
         voice_channel = message.author.voice.channel
 
-        if self.vc == "" or not self.vc.is_connected() or self.vc is None:
-            self.vc = await voice_channel.connect()
-        else:
-            await self.vc.move_to(voice_channel)
         # 현재 문제상황
         # bot이 접속해있는지 확인하지 않고 그냥 바로 queue에 때려넣음
-        # 이게 문제 밥 먹고 고치자.
+        # 그래서 노래가 끝나면 아예 연결을 끊도록 임시조치해둠.
+        # 이게 문제 고치자.
         if song:
+            if self.vc == "" or not self.vc.is_connected() or self.vc is None:
+                self.vc = await voice_channel.connect()
+            else:
+                await self.vc.move_to(voice_channel)
+
             if self.vc.source is not None:
                 if len(self.song_queue) < self.NUM_OF_SONG_QUEUE:
                     self.song_queue.append([song, voice_channel])
