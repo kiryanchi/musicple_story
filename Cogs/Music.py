@@ -41,19 +41,10 @@ class Music(commands.Cog):
         self.queue_msg = await channel.fetch_message(self.QUEUE_MSG_ID)
         self.player_embed_msg = await channel.fetch_message(self.PLAYER_EMBED_MSG_ID)
 
-        # embed = discord.Embed(title="현재 재생 중 아님", color=0xb18cfe)
-        # embed.set_image(url="attachment:///skywhale.jpg")
-        # embed.set_footer(text="채팅을 치면 자동으로 검색합니다.")
-        # await channel.send(embed=embed, components = [
-        #     [
-        #         Button(style=ButtonStyle.green, label="Skip"),
-        #         Button(style=ButtonStyle.grey, label="Shuffle"),
-        #         Button(style=ButtonStyle.red, label="Stop")
-        #     ]
-        # ])
+        embed = self.make_song_embed()
+        await self.player_embed_msg.edit(embed=embed)
+        await self.queue_msg.edit("현재 재생목록 비어있음")
 
-        # await channel.send("___***재생목록:***___")
-        # self.queue_msg = await channel.send("현재 재생목록 비어있음")
 
     def make_song_embed(self, thumbnail=None):
         if thumbnail is not None:
@@ -92,7 +83,7 @@ class Music(commands.Cog):
         
         components.append(Button(style=ButtonStyle.red, label="Cancel"))
 
-        msg = await message.channel.send(embed=embed, components=components)
+        msg = await message.reply(embed=embed, components=components)
 
 
         def check(res):
@@ -119,9 +110,9 @@ class Music(commands.Cog):
 
     async def check_queue(self):
         if len(self.song_queue) == 0:
-            # await self.app.voice_clients[0].disconnect()
             embed = self.make_song_embed()
             await self.player_embed_msg.edit(embed=embed)
+            await self.app.voice_clients[0].disconnect()
         else:
             self.vc.stop()
             await self.play_song(self.song_queue[0])
@@ -174,27 +165,22 @@ class Music(commands.Cog):
             await message.channel.send("음성 채널에 들어가서 사용해주세요", delete_after=5)
             return await message.delete()
             
-        
+        info = await self.search_song(self.NUM_OF_SEARCH, message.content)
+        song = await self.select_song(message.content, info, message)
+        # print(song)
+
         voice_channel = message.author.voice.channel
 
         if self.vc == "" or not self.vc.is_connected() or self.vc is None:
             self.vc = await voice_channel.connect()
         else:
             await self.vc.move_to(voice_channel)
-
-        info = await self.search_song(self.NUM_OF_SEARCH, message.content)
-        song = await self.select_song(message.content, info, message)
-        print(song)
-
         # 현재 문제상황
         # bot이 접속해있는지 확인하지 않고 그냥 바로 queue에 때려넣음
         # 이게 문제 밥 먹고 고치자.
         if song:
             if self.vc.source is not None:
-                # 음악이 끝난 후, 큐에 저장된 음악이 0개라면
-                if len(self.song_queue) == 0:
-                    await self.play_song([song, voice_channel])
-                elif len(self.song_queue) < self.NUM_OF_SONG_QUEUE:
+                if len(self.song_queue) < self.NUM_OF_SONG_QUEUE:
                     self.song_queue.append([song, voice_channel])
                     await self.refresh_song_queue()
                     return await message.channel.send(f"{song['title']} 이(가) 선택됨.", delete_after=5)
