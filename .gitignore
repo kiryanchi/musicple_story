@@ -3,3 +3,8 @@ token
 .idea/
 my_venv/
 MusicTest.py
+nohup.out
+static/
+test.py
+__pycache__/
+Cogs/__pycache__/
