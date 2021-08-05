@@ -7,6 +7,7 @@ import youtube_dl
 
 class Music(commands.Cog):
     def __init__(self, app):
+        DiscordComponents(app)
         self.app:commands.Bot = app
 
         # Constant    
@@ -15,31 +16,55 @@ class Music(commands.Cog):
         self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
         self.NUM_OF_SEARCH = 9
         self.NUM_OF_SONG_QUEUE = 15
+        self.QUEUE_MSG_ID = 872112825236090910
+        self.PLAYER_EMBED_MSG_ID = 872112822153248778
+        # self.BUTTON_COMPONENTS = [
+        #     [
+        #         Button(style=ButtonStyle.green, label="Skip"),
+        #         Button(style=ButtonStyle.grey, label="Shuffle"),
+        #         Button(style=ButtonStyle.red, label="Stop"),
+        #         Button(style=ButtonStyle.URL, label="URL", url="")
+        #     ]
+        # ]
 
         # Variable
         self.song_queue = []
         self.is_playing = False
         self.vc = ""
         self.queue_msg = ""
+        self.player_embed_msg = ""
     
     @commands.Cog.listener()
     async def on_ready(self):
         DiscordComponents(self.app)
         channel = self.app.get_channel(self.MUSIC_CHANNEL)
+        self.queue_msg = await channel.fetch_message(self.QUEUE_MSG_ID)
+        self.player_embed_msg = await channel.fetch_message(self.PLAYER_EMBED_MSG_ID)
 
-        embed = discord.Embed(title="현재 재생 중 아님", color=0xb18cfe)
-        embed.set_image(url="")
-        embed.set_footer(text="채팅을 치면 자동으로 검색합니다.")
-        await channel.send(embed=embed, components = [
-            [
-                Button(style=ButtonStyle.green, label="Skip"),
-                Button(style=ButtonStyle.grey, label="Shuffle"),
-                Button(style=ButtonStyle.red, label="Stop")
-            ]
-        ])
+        # embed = discord.Embed(title="현재 재생 중 아님", color=0xb18cfe)
+        # embed.set_image(url="attachment:///skywhale.jpg")
+        # embed.set_footer(text="채팅을 치면 자동으로 검색합니다.")
+        # await channel.send(embed=embed, components = [
+        #     [
+        #         Button(style=ButtonStyle.green, label="Skip"),
+        #         Button(style=ButtonStyle.grey, label="Shuffle"),
+        #         Button(style=ButtonStyle.red, label="Stop")
+        #     ]
+        # ])
 
-        await channel.send("___***재생목록:***___")
-        self.queue_msg = await channel.send("현재 재생목록 비어있음")
+        # await channel.send("___***재생목록:***___")
+        # self.queue_msg = await channel.send("현재 재생목록 비어있음")
+
+    def make_song_embed(self, thumbnail=None):
+        if thumbnail is not None:
+            embed = discord.Embed(title="현재 재생 중인 곡", color=0xb18cfe)
+            embed.set_image(url=thumbnail)
+            embed.set_footer(text="채팅을 치면 자동으로 검색합니다.")
+        else:
+            embed = discord.Embed(title="현재 재생 중 아님", color=0xb18cfe)
+            embed.set_image(url="")
+            embed.set_footer(text="채팅을 치면 자동으로 검색합니다.")
+        return embed
 
     async def search_song(self, amount, song, get_url=False):
         info = await self.app.loop.run_in_executor(None, lambda: VideosSearch(song, limit=self.NUM_OF_SEARCH))
@@ -94,7 +119,9 @@ class Music(commands.Cog):
 
     async def check_queue(self):
         if len(self.song_queue) == 0:
-            await self.app.voice_clients[0].disconnect()
+            # await self.app.voice_clients[0].disconnect()
+            embed = self.make_song_embed()
+            await self.player_embed_msg.edit(embed=embed)
         else:
             self.vc.stop()
             await self.play_song(self.song_queue[0])
@@ -112,6 +139,10 @@ class Music(commands.Cog):
             self.vc = await song_info[1].connect()
         else:
             await self.vc.move_to(song_info[1])
+        
+        embed = self.make_song_embed(song_info[0]['thumbnails'][0]['url'])
+
+        await self.player_embed_msg.edit(embed=embed)
 
         self.vc.play(discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(url, **self.FFMPEG_OPTIONS)), after=lambda error: self.app.loop.create_task(self.check_queue()))
         self.vc.source.volume = 0.5
@@ -160,7 +191,10 @@ class Music(commands.Cog):
         # 이게 문제 밥 먹고 고치자.
         if song:
             if self.vc.source is not None:
-                if len(self.song_queue) < self.NUM_OF_SONG_QUEUE:
+                # 음악이 끝난 후, 큐에 저장된 음악이 0개라면
+                if len(self.song_queue) == 0:
+                    await self.play_song([song, voice_channel])
+                elif len(self.song_queue) < self.NUM_OF_SONG_QUEUE:
                     self.song_queue.append([song, voice_channel])
                     await self.refresh_song_queue()
                     return await message.channel.send(f"{song['title']} 이(가) 선택됨.", delete_after=5)
@@ -168,23 +202,6 @@ class Music(commands.Cog):
                     return await message.channel.send(f"재생목록 가득 참. 이 곡이 끝나면 추가해주세요.", delte_after=10)
 
             await self.play_song([song, voice_channel])
-
-    # @commands.command()
-    # async def queue(self, ctx):
-    #     for song in self.song_queue:
-    #         print(song['title'])
-
-    # @commands.command()
-    # async def skip(self, ctx):
-    #     if ctx.voice_client is None:
-    #         return
-
-    #     if ctx.author.voice is None:
-    #         return await ctx.send("음성 채널에 들어가서 사용해주세요.")
-        
-    #     if ctx.author.voice.channel.id != 
-    #     ctx.voice_client.stop()
-    #     await self.check_queue()
 
 def setup(app):
     app.add_cog(Music(app))
