@@ -4,6 +4,7 @@ from discord.ext import commands
 from discord_components import DiscordComponents, Button, Select, SelectOption, ButtonStyle, InteractionType
 from youtubesearchpython import VideosSearch
 import youtube_dl
+import random
 
 class Music(commands.Cog):
     def __init__(self, app):
@@ -15,42 +16,74 @@ class Music(commands.Cog):
         self.YDL_OPTS = {"format": "bestaudio", "quiet": False}
         self.FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
         self.NUM_OF_SEARCH = 9
-        self.NUM_OF_SONG_QUEUE = 15
-        self.PLAYER_EMBED_MSG_ID = 872753999315603466
-        # self.BUTTON_COMPONENTS = [
-        #     [
-        #         Button(style=ButtonStyle.green, label="Skip"),
-        #         Button(style=ButtonStyle.grey, label="Shuffle"),
-        #         Button(style=ButtonStyle.red, label="Stop"),
-        #         Button(style=ButtonStyle.URL, label="URL", url="")
-        #     ]
-        # ]
+        self.NUM_OF_SONG_QUEUE = 30
+        self.PLAYER_EMBED_MSG_ID = 873180322299252766
+        self.BUTTON_MSG_ID = 873180323490439199
+        self.BUTTON_COMPONENTS = [
+            [
+                Button(style=ButtonStyle.green, label="Skip"),
+                Button(style=ButtonStyle.grey, label="Shuffle"),
+                Button(style=ButtonStyle.red, label="Pause"),
+            ]
+        ]
 
         # Variable
         self.song_queue = []
         self.is_playing = False
         self.vc = ""
         self.player_embed_msg = ""
+        self.button_embed_msg = ""
     
     @commands.Cog.listener()
     async def on_ready(self):
         DiscordComponents(self.app)
         channel = self.app.get_channel(self.MUSIC_CHANNEL)
         self.player_embed_msg = await channel.fetch_message(self.PLAYER_EMBED_MSG_ID)
+        self.button_embed_msg = await channel.fetch_message(self.BUTTON_MSG_ID)
 
         embed = self.make_song_embed()
         await self.player_embed_msg.edit("현재 재생목록 비어있음", embed=embed)
+        # await self.button_embed_msg.edit(" ឵ ឵឵ ឵ ឵឵ ឵ ឵឵ ឵ ឵", components=self.BUTTON_COMPONENTS)
+        # button embed 
+        await self.button_reaction()
+
+    async def button_reaction(self):
+        await self.button_embed_msg.edit(" ឵ ឵឵ ឵ ឵឵ ឵ ឵឵ ឵ ឵", components=self.BUTTON_COMPONENTS)
+        while True:
+            res = await self.app.wait_for("button_click")
+            if res.component.label == "Skip":
+                await self.skip()
+            elif res.component.label == "Shuffle":
+                await self.shuffle()
+            elif res.component.label == "Pause":
+                self.pause()
 
     def make_song_embed(self, title=None, thumbnail=None):
         if thumbnail is not None:
             embed = discord.Embed(title="현재 재생 중인 곡", description=title, color=0xb18cfe)
             embed.set_image(url=thumbnail)
             embed.set_footer(text="채팅을 치면 자동으로 검색합니다.")
+            self.is_playing = True
         else:
             embed = discord.Embed(title="현재 재생 중 아님", color=0xb18cfe)
             embed.set_image(url="")
             embed.set_footer(text="채팅을 치면 자동으로 검색합니다.")
+            self.is_playing = False
         return embed
+
+    async def skip(self):
+        self.vc.stop()
+        await self.check_queue()
+
+    async def shuffle(self):
+        random.shuffle(self.song_queue)
+        await self.refresh_song_queue()
+
+    def pause(self):
+        if self.vc.is_paused():
+            self.vc.resume()
+        elif not self.vc.is_paused():
+            self.vc.pause()
 
     async def search_song(self, amount, song, get_url=False):
         info = await self.app.loop.run_in_executor(None, lambda: VideosSearch(song, limit=self.NUM_OF_SEARCH))
@@ -105,7 +138,8 @@ class Music(commands.Cog):
         if len(self.song_queue) == 0:
             embed = self.make_song_embed()
             await self.player_embed_msg.edit(embed=embed)
-            await self.app.voice_clients[0].disconnect()
+            await self.vc.disconnect()
+            # await self.app.voice_clients[0].disconnect()
         else:
             self.vc.stop()
             await self.play_song(self.song_queue[0])
@@ -148,6 +182,7 @@ class Music(commands.Cog):
     async def init(self, ctx):
         await ctx.send("___***재생목록:***___")
         await ctx.send('재생목록이 될 메시지')
+        await ctx.send(' ឵ ឵឵ ឵ ឵឵ ឵ ឵឵ ឵ ឵')
 
     @commands.Cog.listener()
     async def on_message(self, message):
