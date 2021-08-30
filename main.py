@@ -41,12 +41,11 @@ async def reload_commands(ctx, extension=None):
             if filename.endswith(".py"):
                 bot.unload_extension(f"Cogs.{filename[:-3]}")
                 bot.load_extension(f"Cogs.{filename[:-3]}")
-                await ctx.send(f":white_check_mark: {filename[:-3]}을(를) 다시 불러왔습니다!")
-        await ctx.send(f":white_check_mark: {extension}을(를) 다시 불러왔습니다!")
+                await ctx.send(f":white_check_mark: {filename[:-3]}을(를) 다시 불러왔습니다!zxcv")
     else:
         bot.unload_extension(f"Cogs.{extension}")
         bot.load_extension(f"Cogs.{extension}")
-        await ctx.send(f":white_check_mark: {extension}을(를) 다시 불러왔습니다!")
+        await ctx.send(f":white_check_mark: {extension}을(를) 다시 불러왔습니다!asdf")
 
 
 if __name__ == '__main__':

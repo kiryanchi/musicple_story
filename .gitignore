@@ -8,3 +8,6 @@ static/
 test.py
 __pycache__/
 Cogs/__pycache__/
+Core.py
+Exp.py
+MonsterLife.py

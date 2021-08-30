@@ -188,7 +188,7 @@ class Music(commands.Cog):
     async def on_message(self, message):
         # if not music channel, return and pass command
         if message.channel.id != self.MUSIC_CHANNEL:
-            await self.app.process_commands(message)
+            # await self.app.process_commands(message)
             return
         # if bot, return
         if message.author == self.app.user:
